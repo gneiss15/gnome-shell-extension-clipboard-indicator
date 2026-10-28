@@ -865,11 +865,17 @@ const ClipboardIndicator = GObject.registerClass({
 
     _clearHistory (invokedAutomatically = false) {
         // Don't remove pinned items
+        let removed = false;
         this.historySection._getMenuItems().forEach(mItem => {
             if (KEEP_SELECTED_ON_CLEAR === false || !mItem.currentlySelected) {
-                this._removeEntry(mItem, 'delete');
+                this._removeEntry(mItem, 'delete', false);
+                removed = true;
             }
         });
+        if (removed) {
+            this._updateCache();
+            this.#showElements();
+        }
 
         if (NOTIFY_ON_CLEAR) {
             const message = invokedAutomatically
@@ -889,7 +895,7 @@ const ClipboardIndicator = GObject.registerClass({
         }
     }
 
-    _removeEntry (menuItem, event) {
+    _removeEntry (menuItem, event, updateUI = true) {
         let itemIdx = this.clipItemsRadioGroup.indexOf(menuItem);
 
         if(event === 'delete' && menuItem.currentlySelected) {
@@ -903,8 +909,10 @@ const ClipboardIndicator = GObject.registerClass({
             this.registry.deleteEntryFile(menuItem.entry);
         }
 
-        this._updateCache();
-        this.#showElements();
+        if (updateUI) {
+            this._updateCache();
+            this.#showElements();
+        }
     }
 
     _removeOldestEntries () {
