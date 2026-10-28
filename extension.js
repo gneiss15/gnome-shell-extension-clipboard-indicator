@@ -560,6 +560,10 @@ const ClipboardIndicator = GObject.registerClass({
         }
         else if (entry.isImage()) {
             this.registry.getEntryAsImage(entry).then(img => {
+                if (this._destroyed || menuItem._clipboardDestroyed) {
+                    img.destroy();
+                    return;
+                }
                 img.add_style_class_name('clipboard-menu-img-preview');
                 if (menuItem.previewImage) {
                     menuItem.remove_child(menuItem.previewImage);
@@ -608,6 +612,8 @@ const ClipboardIndicator = GObject.registerClass({
     _addEntry (entry, autoSelect, autoSetClip) {
         let menuItem = new PopupMenu.PopupMenuItem('');
 
+        menuItem._clipboardDestroyed = false;
+        menuItem.connect('destroy', () => { menuItem._clipboardDestroyed = true; });
         menuItem.menu = this.menu;
         menuItem.entry = entry;
         menuItem.clipContents = entry.getStringValue();
@@ -837,8 +843,6 @@ const ClipboardIndicator = GObject.registerClass({
     _favoriteToggle (menuItem) {
         menuItem.entry.favorite = menuItem.entry.isFavorite() ? false : true;
         this._moveItemFirst(menuItem);
-        this._updateCache();
-        this.#showElements();
     }
 
     _confirmRemovePinnedEntry (menuItem, selectNext = false) {
@@ -865,17 +869,8 @@ const ClipboardIndicator = GObject.registerClass({
 
     _clearHistory (invokedAutomatically = false) {
         // Don't remove pinned items
-        let removed = false;
-        this.historySection._getMenuItems().forEach(mItem => {
-            if (KEEP_SELECTED_ON_CLEAR === false || !mItem.currentlySelected) {
-                this._removeEntry(mItem, 'delete', false);
-                removed = true;
-            }
-        });
-        if (removed) {
-            this._updateCache();
-            this.#showElements();
-        }
+        this._removeEntries(this.historySection._getMenuItems().filter(
+            item => !KEEP_SELECTED_ON_CLEAR || !item.currentlySelected), 'delete');
 
         if (NOTIFY_ON_CLEAR) {
             const message = invokedAutomatically
@@ -896,19 +891,24 @@ const ClipboardIndicator = GObject.registerClass({
     }
 
     _removeEntry (menuItem, event, updateUI = true) {
-        let itemIdx = this.clipItemsRadioGroup.indexOf(menuItem);
+        if (!this.clipItemsRadioGroup.includes(menuItem)) return;
+        this._removeEntries([menuItem], event, updateUI);
+    }
 
-        if(event === 'delete' && menuItem.currentlySelected) {
-            this.#clearClipboard();
+    _removeEntries (items, event, updateUI = true) {
+        if (items.length === 0) return;
+        const removed = new Set(items);
+        const remaining = this.clipItemsRadioGroup.filter(item => !removed.has(item));
+        // Keep the array identity: every menu item holds a radioGroup reference.
+        this.clipItemsRadioGroup.splice(0, this.clipItemsRadioGroup.length, ...remaining);
+        for (const menuItem of items) {
+            if (event === 'delete' && menuItem.currentlySelected)
+                this.#clearClipboard();
+            const entry = menuItem.entry;
+            menuItem.destroy();
+            if (event !== 'move' && entry.isImage())
+                this.registry.deleteEntryFile(entry);
         }
-
-        menuItem.destroy();
-        this.clipItemsRadioGroup.splice(itemIdx,1);
-
-        if (menuItem.entry.isImage()) {
-            this.registry.deleteEntryFile(menuItem.entry);
-        }
-
         if (updateUI) {
             this._updateCache();
             this.#showElements();
@@ -916,22 +916,8 @@ const ClipboardIndicator = GObject.registerClass({
     }
 
     _removeOldestEntries () {
-        let clipItemsRadioGroupNoFavorite = this.clipItemsRadioGroup.filter(
-            item => item.entry.isFavorite() === false);
-
-        const origSize = clipItemsRadioGroupNoFavorite.length;
-
-        while (clipItemsRadioGroupNoFavorite.length > MAX_REGISTRY_LENGTH) {
-            let oldestNoFavorite = clipItemsRadioGroupNoFavorite.shift();
-            this._removeEntry(oldestNoFavorite);
-
-            clipItemsRadioGroupNoFavorite = this.clipItemsRadioGroup.filter(
-                item => item.entry.isFavorite() === false);
-        }
-
-        if (clipItemsRadioGroupNoFavorite.length < origSize) {
-            this._updateCache();
-        }
+        const unpinned = this.clipItemsRadioGroup.filter(item => !item.entry.isFavorite());
+        this._removeEntries(unpinned.slice(0, Math.max(0, unpinned.length - MAX_REGISTRY_LENGTH)));
     }
 
     _onMenuItemSelected (menuItem, autoSet) {
@@ -1061,8 +1047,9 @@ const ClipboardIndicator = GObject.registerClass({
     }
 
     _moveItemFirst (item) {
-        this._removeEntry(item);
-        this._addEntry(item.entry, item.currentlySelected, false);
+        const { entry, currentlySelected } = item;
+        this._removeEntry(item, 'move', false);
+        this._addEntry(entry, currentlySelected, false);
         this._updateCache();
     }
 
