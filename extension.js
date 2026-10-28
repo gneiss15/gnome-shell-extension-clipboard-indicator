@@ -900,7 +900,8 @@ const ClipboardIndicator = GObject.registerClass({
         const removed = new Set(items);
         const remaining = this.clipItemsRadioGroup.filter(item => !removed.has(item));
         // Keep the array identity: every menu item holds a radioGroup reference.
-        this.clipItemsRadioGroup.splice(0, this.clipItemsRadioGroup.length, ...remaining);
+        this.clipItemsRadioGroup.length = 0;
+        for (const item of remaining) this.clipItemsRadioGroup.push(item);
         for (const menuItem of items) {
             if (event === 'delete' && menuItem.currentlySelected)
                 this.#clearClipboard();
@@ -1047,9 +1048,21 @@ const ClipboardIndicator = GObject.registerClass({
     }
 
     _moveItemFirst (item) {
-        const { entry, currentlySelected } = item;
-        this._removeEntry(item, 'move', false);
-        this._addEntry(entry, currentlySelected, false);
+        const section = item.entry.isFavorite() ? this.favoritesSection : this.historySection;
+        const index = this.clipItemsRadioGroup.indexOf(item);
+        if (index < 0) return;
+        if (section._getMenuItems().includes(item)) {
+            if (index === this.clipItemsRadioGroup.length - 1) return;
+            this.clipItemsRadioGroup.splice(index, 1);
+            this.clipItemsRadioGroup.push(item);
+            section.moveMenuItem(item, 0);
+            this.#showElements();
+        } else {
+            // Pin/unpin changes section and button state; rebuild only that item.
+            const { entry, currentlySelected } = item;
+            this._removeEntry(item, 'move', false);
+            this._addEntry(entry, currentlySelected, false);
+        }
         this._updateCache();
     }
 
