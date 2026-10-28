@@ -121,10 +121,10 @@ git diff --check
 
 Alle Prüfungen bestanden am 28. Oktober 2026:
 
-- History: 8 Szenarien mit tatsächlichen aus `extension.js` geladenen Methoden
+- History: 9 Szenarien mit tatsächlichen aus `extension.js` geladenen Methoden
   und simulierten Shell-Actors: Hinzufügen/Entfernen, doppelte Entfernung,
   10.000 Einträge löschen, Favoriten/Auswahl, leerer Clear, Größenbegrenzung
-  einschließlich Null, Verschieben ohne Actor-Zerstörung, Pin/Unpin von Bildern.
+  einschließlich Null, Verschieben ohne Actor-Zerstörung, Pin/Unpin von Bildern und verspätete Bild-Callbacks nach Actor-/Extension-Destroy.
 - Queue: 5 Szenarien, darunter 10.000 Anforderungen während eines aktiven Writes,
   höchstens ein aktiver Writer, nur neuester vorgemerkter Stand, Fehler/Retry,
   ausgeschöpftes Fehlerbudget, Wiederherstellung und Shutdown mit neuer Anforderung.

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../extension.js', import.meta.url), 'utf8');
-const methods = ['_clearHistory', '_removeEntry', '_removeEntries', '_removeOldestEntries', '_moveItemFirst', '_favoriteToggle'];
+const methods = ['_clearHistory', '_removeEntry', '_removeEntries', '_removeOldestEntries', '_moveItemFirst', '_favoriteToggle', '_setEntryLabel'];
 const bodies = methods.map(name => {
     const start = source.indexOf(`    ${name} (`);
     const rest = source.slice(start + 1);
@@ -83,4 +83,15 @@ for (const keep of [false, true]) {
         assert.deepEqual((favorite ? h.favoritesSection : h.historySection).items, [item]);
     }
 }
-console.log('History: 8 scenarios passed (actual extension methods, mocked Shell actors).');
+for (const destroyed of ['item', 'extension']) {
+    const h = setup(); let imageDestroyed = 0;
+    const image = { destroy() { imageDestroyed++; } };
+    h.registry.getEntryAsImage = () => Promise.resolve(image);
+    const item = { entry: { isText: () => false, isImage: () => true } };
+    h._setEntryLabel(item);
+    if (destroyed === 'item') item._clipboardDestroyed = true;
+    else h._destroyed = true;
+    await Promise.resolve();
+    assert.equal(imageDestroyed, 1, 'late callback must dispose image without accessing dead actors');
+}
+console.log('History: 9 scenarios passed (actual extension methods, mocked Shell actors).');
