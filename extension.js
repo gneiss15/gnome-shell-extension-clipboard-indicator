@@ -90,6 +90,10 @@ const ClipboardIndicator = GObject.registerClass({
 
     destroy () {
         this._destroyed = true;
+        // Shell destroy() cannot await; the actor-free writer drains independently.
+        this.registry.flush().then(saved => {
+            if (!saved) console.error('Clipboard Indicator: registry remains unsaved after shutdown');
+        }).catch(error => console.error(error));
         this._disconnectSettings();
         this._unbindShortcuts();
         this._disconnectSelectionListener();
@@ -169,7 +173,7 @@ const ClipboardIndicator = GObject.registerClass({
             this._updateTopbarLayout();
             this._setupListener();
             this._setupHistoryIntervalClearing();
-        });
+        }).catch(error => console.error('Clipboard Indicator: failed to load registry', error));
     }
 
     #updateIndicatorContent(entry) {
@@ -570,7 +574,7 @@ const ClipboardIndicator = GObject.registerClass({
                 }
                 menuItem.previewImage = img;
                 menuItem.insert_child_below(img, menuItem.label);
-            });
+            }).catch(error => console.error('Clipboard Indicator: failed to load menu image', error));
         }
     }
 

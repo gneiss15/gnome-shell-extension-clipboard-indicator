@@ -1,6 +1,7 @@
 import GLib from 'gi://GLib';
 import Gio from 'gi://Gio';
 import St from 'gi://St';
+import { registryWriter, replaceContents } from './registryStorage.js';
 import { PrefsFields } from './constants.js';
 
 const FileQueryInfoFlags = Gio.FileQueryInfoFlags;
@@ -19,6 +20,7 @@ export class Registry {
 
     write (entries) {
         const registryContent = [];
+        const images = [];
 
         for (let entry of entries) {
             const item = {
@@ -34,39 +36,30 @@ export class Registry {
             else if (entry.isImage()) {
                 const filename = this.getEntryFilename(entry);
                 item.contents = filename;
-                this.writeEntryFile(entry);
+                images.push({ filename, bytes: entry.asBytes() });
             }
 
             if (entry.getTag()) item.tag = entry.getTag();
         }
 
-        this.writeToFile(registryContent);
+        this.writeToFile(registryContent, images);
     }
 
-    writeToFile (registry) {
-        let json = JSON.stringify(registry);
-        let contents = new GLib.Bytes(json);
-
-        // Make sure dir exists
-        GLib.mkdir_with_parents(this.REGISTRY_DIR, parseInt('0775', 8));
-
-        // Write contents to file asynchronously
-        let file = Gio.file_new_for_path(this.REGISTRY_PATH);
-        file.replace_async(null, false, Gio.FileCreateFlags.NONE,
-                            GLib.PRIORITY_DEFAULT, null, (obj, res) => {
-
-            let stream = obj.replace_finish(res);
-
-            stream.write_bytes_async(contents, GLib.PRIORITY_DEFAULT,
-                                null, (w_obj, w_res) => {
-
-                w_obj.write_bytes_finish(w_res);
-                stream.close(null);
-            });
+    writeToFile (registry, images = []) {
+        // Snapshot plain values now; serialize only when this snapshot is written.
+        registryWriter(this.REGISTRY_PATH).request({
+            registry: registry.map(item => ({ ...item })), images,
         });
     }
 
+    async flush () {
+        return registryWriter(this.REGISTRY_PATH).flush();
+    }
+
     async read () {
+        // A previous instance may still be draining after disable/enable.
+        if (!await this.flush())
+            throw new Error('Clipboard Indicator: cannot read while newer registry data remains unsaved');
         return new Promise(resolve => {
             if (GLib.file_test(this.REGISTRY_PATH, FileTest.EXISTS)) {
                 let file = Gio.file_new_for_path(this.REGISTRY_PATH);
@@ -174,34 +167,12 @@ export class Registry {
     async writeEntryFile (entry) {
         if (this.#entryFileExists(entry)) return;
 
-        let file = Gio.file_new_for_path(this.getEntryFilename(entry));
-
-        return new Promise(resolve => {
-            file.replace_async(null, false, Gio.FileCreateFlags.NONE,
-                               GLib.PRIORITY_DEFAULT, null, (obj, res) => {
-
-                let stream = obj.replace_finish(res);
-
-                stream.write_bytes_async(entry.asBytes(), GLib.PRIORITY_DEFAULT,
-                                         null, (w_obj, w_res) => {
-
-                    w_obj.write_bytes_finish(w_res);
-                    stream.close(null);
-                    resolve();
-                });
-            });
-        });
+        GLib.mkdir_with_parents(this.REGISTRY_DIR, 0o700);
+        await replaceContents(this.getEntryFilename(entry), entry.asBytes());
     }
 
-    async deleteEntryFile (entry) {
-        const file = Gio.file_new_for_path(this.getEntryFilename(entry));
-
-        try {
-            await file.delete_async(GLib.PRIORITY_DEFAULT, null);
-        }
-        catch (e) {
-            console.error(e);
-        }
+    deleteEntryFile (entry) {
+        registryWriter(this.REGISTRY_PATH).deleteImage(this.getEntryFilename(entry));
     }
 
     clearCacheFolder() {
