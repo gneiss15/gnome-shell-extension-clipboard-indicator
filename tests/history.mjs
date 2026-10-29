@@ -9,10 +9,10 @@ const bodies = methods.map(name => {
     const next = rest.search(/\n    (?:async )?[#\w]+ \(/);
     return (' ' + rest.slice(0, next)).replaceAll('#', '_');
 }).join('\n');
-const make = new Function('KEEP_SELECTED_ON_CLEAR', 'MAX_REGISTRY_LENGTH', 'NOTIFY_ON_CLEAR', '_', 'PASTE_ON_SELECT', 'MOVE_ITEM_FIRST', 'PopupMenu', 'setTimeout',
+const make = new Function('KEEP_SELECTED_ON_CLEAR', 'MAX_REGISTRY_LENGTH', 'NOTIFY_ON_CLEAR', '_', 'PASTE_ON_SELECT', 'MOVE_ITEM_FIRST', 'PopupMenu', 'setTimeout', 'Clutter',
     `return class History { ${bodies} }`);
 function setup({ keep = false, max = 2, paste = false, move = true, timers = [] } = {}) {
-    const History = make(keep, max, true, s => s, paste, move, { Ornament: { DOT: 1 } }, callback => { timers.push(callback); return timers.length; });
+    const History = make(keep, max, true, s => s, paste, move, { Ornament: { DOT: 1 } }, callback => { timers.push(callback); return timers.length; }, { InputContentPurpose: { TERMINAL: 1 } });
     const history = new History();
     Object.assign(history, {
         clipItemsRadioGroup: [], writes: 0, redraws: 0, cleared: 0, deleted: [], notifications: [],
