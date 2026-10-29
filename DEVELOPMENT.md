@@ -189,3 +189,22 @@ des Tests Einstellungen verändert wurden, den gesicherten dconf-Export mit
 `dconf load /org/gnome/shell/extensions/clipboard-indicator/` zurückspielen.
 Danach regulär anmelden beziehungsweise die bisherige Extension aktivieren.
 Backups erst nach erfolgreicher Prüfung über den Papierkorb aufräumen.
+
+## Editor-Korrektur nach interaktivem Test (29. Oktober 2026)
+
+Beim Stift-Klick wurde im Shell-Journal reproduzierbar gemeldet:
+`TypeError: Object is of type Cogl.Color - cannot convert to ClutterColor`.
+Der Fehler stammt aus dem übernommenen Upstream-Editor. GNOME 46 benötigt
+`Clutter.Color` mit Byte-Komponenten; der neuere `Cogl.Color`-Zweig bleibt erhalten.
+
+Zusätzlicher Regressionstest (prüft die echten Property-Typen der lokalen
+GNOME-46-Bibliotheken und simuliert den neueren API-Zweig):
+
+```bash
+GI_TYPELIB_PATH=/usr/lib/gnome-shell:/usr/lib/x86_64-linux-gnu/mutter-14 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/mutter-14 gjs -m tests/editor-colors.js
+```
+
+Test, JavaScript-Syntaxprüfung und History-Regressionstests bestanden. Die
+Korrektur liegt zunächst ausschließlich im Klon/Fork. Nach Übernahme der neuen
+`extension.js` und Neuanmeldung ist das Öffnen, Ändern, Speichern und Verwerfen
+im echten Editor noch zu prüfen.

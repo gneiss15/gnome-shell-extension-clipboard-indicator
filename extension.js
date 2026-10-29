@@ -1845,10 +1845,17 @@ const ClipboardIndicator = GObject.registerClass({
 
         });
 
-        const white = new Cogl.Color();
-        white.init_from_4f(1.0, 1.0, 1.0, 1.0);
-        const selectionBlue = new Cogl.Color();
-        selectionBlue.init_from_4f(0.39, 0.59, 1.0, 0.71);
+        // GNOME 46 uses ClutterColor; newer Shell versions use CoglColor.
+        let white, selectionBlue;
+        if (Clutter.Color) {
+            white = new Clutter.Color({ red: 255, green: 255, blue: 255, alpha: 255 });
+            selectionBlue = new Clutter.Color({ red: 99, green: 150, blue: 255, alpha: 181 });
+        } else {
+            white = new Cogl.Color();
+            white.init_from_4f(1.0, 1.0, 1.0, 1.0);
+            selectionBlue = new Cogl.Color();
+            selectionBlue.init_from_4f(0.39, 0.59, 1.0, 0.71);
+        }
         clutterText.color = white;
         clutterText.selection_color = selectionBlue;
         clutterText.selected_text_color = white;
