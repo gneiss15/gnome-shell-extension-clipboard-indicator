@@ -1,3 +1,59 @@
+# 📋 Clipboard Indicator: performance and reliability fork
+
+A fork of [Tudmotu/gnome-shell-extension-clipboard-indicator](https://github.com/Tudmotu/gnome-shell-extension-clipboard-indicator),
+based on v71, focused on responsive history operations and reliable JSON storage.
+
+## Why this fork?
+
+Clearing a large clipboard history used to serialize and save the complete
+registry and refresh the menu for every removed entry. This could cause long
+delays and make GNOME Shell unresponsive. The initial fix was tested locally and
+reported in [upstream issue #661](https://github.com/Tudmotu/gnome-shell-extension-clipboard-indicator/issues/661).
+This fork builds on that fix while keeping the existing JSON format and settings.
+
+## What changed?
+
+- **Batch history updates:** clearing history and trimming it to the size limit
+  update storage and the menu once, while preserving favorites and the configured
+  selection behavior.
+- **Move entries efficiently:** reorder existing menu actors without destroying
+  them or saving intermediate states. Selecting an entry with automatic paste
+  keeps the new selection instead of restoring the previous entry.
+- **Coordinate saves:** allow one active registry write and retain only the latest
+  pending snapshot, with bounded retries, error reporting and shutdown draining.
+- **Replace files atomically:** use Gio's complete file-replacement operation for
+  local JSON storage. Save images before committing their registry references and
+  remove unused images after the updated registry has committed.
+- **Fix the text editor on GNOME 46:** use the color type expected by that Shell
+  version, retaining the newer color API for other versions.
+- **Make favorites clear:** use an outlined star for normal entries and a filled
+  star for favorites, at normal menu contrast. Press **P** to toggle a favorite.
+
+The extension UUID and GSettings schema are unchanged, so the existing settings
+remain compatible. License and copyright notices are preserved.
+
+## Test status
+
+**Locally tested and working on Ubuntu 24.04 / GNOME Shell 46 / X11**
+— confirmed by the user on **29 October 2026**.
+
+The local interactive checks passed after the editor, selection and favorite-icon
+fixes. Automated tests also cover history operations, rapid save requests, write
+ordering, failure recovery, real Gio file operations and JSON roundtrips.
+
+Other GNOME versions have not been tested locally. The previously observed
+JSAPI/GC warning has not been proven fixed and remains a point to monitor.
+
+See [DEVELOPMENT.md](DEVELOPMENT.md) for implementation details, test commands,
+known limitations and controlled installation/rollback guidance. The upstream
+description below is preserved unchanged; its installation links refer to the
+original project.
+
+---
+
+<details>
+<summary>Original description</summary>
+
 # 📋 Clipboard Indicator
 
 [<img src="https://raw.githubusercontent.com/andyholmes/gnome-shell-extensions-badge/eb9af9a1c6f04eb060cb01de6aeb5c84232cd8c0/get-it-on-ego.svg?sanitize=true" width="180" alt="Get it on GNOME Extensions">](https://extensions.gnome.org/extension/779/clipboard-indicator/)
@@ -108,3 +164,5 @@ This project loosely follows the release cycle of GNOME. That means it will
 usually receive 2 updates a year, close to the release of a new major GNOME
 version. If there are features you'd like to implement or suggest, it is advised
 to start the discussion a month or two before a GNOME release.
+
+</details>

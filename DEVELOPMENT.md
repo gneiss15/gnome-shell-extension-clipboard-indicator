@@ -1,6 +1,8 @@
 # Entwicklung und kontrollierter Test
 
-Stand: 28. Oktober 2026. Noch **kein Test in der produktiven GNOME Shell**.
+Stand: 29. Oktober 2026. Der Benutzer hat die korrigierte Version lokal unter
+Ubuntu 24.04 / GNOME Shell 46 / X11 installiert und die interaktiven Tests als
+bestanden bestätigt. Die GC-Warnung bleibt ein Beobachtungspunkt.
 
 ## Ausgangspunkt und Commits
 
@@ -8,7 +10,8 @@ Upstream: `https://github.com/Tudmotu/gnome-shell-extension-clipboard-indicator`
 Basis: `c880c7fb88dc7232a61a5864d125989a4f375daa` (aktueller Upstream-HEAD beim Klonen).
 Die Programmdateien entsprechen v71; seit dem Tag gibt es keine Unterschiede im Git-Baum.
 Fork: `https://github.com/gneiss15/gnome-shell-extension-clipboard-indicator`.
-Branch: `codex/clipboard-history-optimizations`. `upstream` bleibt das Original,
+Entwicklungsbranch: `codex/clipboard-history-optimizations`; die getesteten
+Änderungen sind auch im Standardbranch `master` des Forks enthalten. `upstream` bleibt das Original,
 `origin` zeigt auf den Fork. Kein Upstream-PR, keine Veröffentlichung auf extensions.gnome.org.
 UUID, Schema, Lizenz und Copyright sind unverändert.
 
@@ -204,10 +207,8 @@ GNOME-46-Bibliotheken und simuliert den neueren API-Zweig):
 GI_TYPELIB_PATH=/usr/lib/gnome-shell:/usr/lib/x86_64-linux-gnu/mutter-14 LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu/mutter-14 gjs -m tests/editor-colors.js
 ```
 
-Test, JavaScript-Syntaxprüfung und History-Regressionstests bestanden. Die
-Korrektur liegt zunächst ausschließlich im Klon/Fork. Nach Übernahme der neuen
-`extension.js` und Neuanmeldung ist das Öffnen, Ändern, Speichern und Verwerfen
-im echten Editor noch zu prüfen.
+Test, JavaScript-Syntaxprüfung und History-Regressionstests bestanden. Die Korrektur wurde anschließend lokal installiert; der Benutzer hat die
+interaktiven Tests am 29. Oktober 2026 als bestanden bestätigt.
 
 ## Auswahl beim automatischen Einfügen (29. Oktober 2026)
 
@@ -220,11 +221,15 @@ Die Verschiebung erfolgt bei Zeilenauswahl unmittelbar für beide Zustände von
 
 Das separate Einfügen-Symbol bzw. `v` bleibt eine temporäre Einfügeaktion mit
 Wiederherstellung des vorherigen Clipboards. Zum Auswählen/Verschieben den
-Zeilentext anklicken. Anheften erfolgt über die Stecknadel rechts neben dem
-Editor oder per `p` auf dem fokussierten Menüeintrag.
+Zeilentext anklicken. Favoriten werden über den Stern rechts neben dem Editor
+oder per `p` auf dem fokussierten Menüeintrag umgeschaltet: ungefüllt für normale
+Einträge, ausgefüllt für Favoriten. Die zusätzliche Abdunklung wurde entfernt.
 
 Die History-Suite umfasst nun 15 Szenarien einschließlich beider Auswahlmodi,
 aktivierter/deaktivierter Verschiebung sowie beider Paste-Timer bis zur
 Wiederherstellung. Alle fünf Testsuiten bestanden vor dieser Änderung; die
 angepasste History-Suite und Syntaxprüfung bestanden mit der Auswahlkorrektur.
-Interaktive Bestätigung der Korrektur steht aus.
+Die interaktiven Tests der korrigierten Version hat der Benutzer am
+29. Oktober 2026 als bestanden bestätigt. Unter X11 lässt sich die Shell nach
+dem Kopieren geänderter Dateien auch über `Alt+F2`, `r`, Enter neu laden; dafür
+ist keine Ab-/Anmeldung nötig. Unter Wayland ist dieser Weg nicht verfügbar.
