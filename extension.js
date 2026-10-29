@@ -746,12 +746,13 @@ const ClipboardIndicator = GObject.registerClass({
 
         // Favorite button
         let iconfav = new St.Icon({
-            icon_name: 'view-pin-symbolic',
+            icon_name: entry.isFavorite() ? 'starred-symbolic' : 'non-starred-symbolic',
             style_class: 'system-status-icon'
         });
 
         let icofavBtn = new St.Button({
             style_class: 'ci-pin-btn ci-action-btn',
+            accessible_name: entry.isFavorite() ? _('Unpin') : _('Pin'),
             can_focus: true,
             child: iconfav,
             visible: SHOW_PIN_BUTTON,
