@@ -626,7 +626,7 @@ const ClipboardIndicator = GObject.registerClass({
         // CLICK fix for Paste on Select: clicking behaves like Enter
         menuItem.connect('activate', () => {
             if (PASTE_ON_SELECT) {
-                this.#pasteItem(menuItem);
+                this.#pasteItem(menuItem, true);
                 this._onMenuItemSelectedAndMenuClose(menuItem, false);
             } else {
                 this._onMenuItemSelectedAndMenuClose(menuItem, true);
@@ -681,7 +681,7 @@ const ClipboardIndicator = GObject.registerClass({
                 case Clutter.KEY_KP_Enter:
                 case Clutter.KEY_Return:
                     if (PASTE_ON_SELECT) {
-                        this.#pasteItem(menuItem);
+                        this.#pasteItem(menuItem, true);
                         this._onMenuItemSelectedAndMenuClose(menuItem, false);
                     } else {
                         this._onMenuItemSelectedAndMenuClose(menuItem, true);
@@ -967,8 +967,9 @@ const ClipboardIndicator = GObject.registerClass({
             }
         }
 
-        // Ensure MOVE_ITEM_FIRST also applies when PASTE_ON_SELECT fast-path skips _refreshIndicator()
-        if (PASTE_ON_SELECT && MOVE_ITEM_FIRST && !menuItem.entry.isFavorite()) {
+        // Apply ordering directly for every selection, independently of later
+        // clipboard owner-change events or the paste-on-select setting.
+        if (MOVE_ITEM_FIRST && !menuItem.entry.isFavorite()) {
             this._moveItemFirst(menuItem);
         }
 
@@ -1637,9 +1638,11 @@ const ClipboardIndicator = GObject.registerClass({
 
 
 
-    #pasteItem (menuItem) {
+    #pasteItem (menuItem, selectAfterPaste = false) {
         this.menu.close();
-        const currentlySelected = this._getCurrentlySelectedItem();
+        // A row activation selects this item. Restoring the previous item after
+        // paste would immediately move that previous item back to the top.
+        const currentlySelected = selectAfterPaste ? menuItem : this._getCurrentlySelectedItem();
         this.preventIndicatorUpdate = true;
         this.#updateClipboard(menuItem.entry);
         this._pastingKeypressTimeout = setTimeout(() => {

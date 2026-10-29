@@ -2,26 +2,28 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync(new URL('../extension.js', import.meta.url), 'utf8');
-const methods = ['_clearHistory', '_removeEntry', '_removeEntries', '_removeOldestEntries', '_moveItemFirst', '_favoriteToggle', '_setEntryLabel'];
+const methods = ['_clearHistory', '_removeEntry', '_removeEntries', '_removeOldestEntries', '_moveItemFirst', '_favoriteToggle', '_setEntryLabel', '_onMenuItemSelectedAndMenuClose', '#pasteItem', '_getCurrentlySelectedItem'];
 const bodies = methods.map(name => {
     const start = source.indexOf(`    ${name} (`);
     const rest = source.slice(start + 1);
     const next = rest.search(/\n    (?:async )?[#\w]+ \(/);
     return (' ' + rest.slice(0, next)).replaceAll('#', '_');
 }).join('\n');
-const make = new Function('KEEP_SELECTED_ON_CLEAR', 'MAX_REGISTRY_LENGTH', 'NOTIFY_ON_CLEAR', '_',
+const make = new Function('KEEP_SELECTED_ON_CLEAR', 'MAX_REGISTRY_LENGTH', 'NOTIFY_ON_CLEAR', '_', 'PASTE_ON_SELECT', 'MOVE_ITEM_FIRST', 'PopupMenu', 'setTimeout',
     `return class History { ${bodies} }`);
-function setup({ keep = false, max = 2 } = {}) {
-    const History = make(keep, max, true, s => s);
+function setup({ keep = false, max = 2, paste = false, move = true, timers = [] } = {}) {
+    const History = make(keep, max, true, s => s, paste, move, { Ornament: { DOT: 1 } }, callback => { timers.push(callback); return timers.length; });
     const history = new History();
     Object.assign(history, {
         clipItemsRadioGroup: [], writes: 0, redraws: 0, cleared: 0, deleted: [], notifications: [],
         registry: { deleteEntryFile: entry => history.deleted.push(entry) },
         _updateCache() { this.writes++; }, _showElements() { this.redraws++; },
+        menu: { close() {} }, _updateClipboard(entry) { this.clipboardEntry = entry; },
+        keyboard: { press() {}, release() {} },
         _clearClipboard() { this.cleared++; }, _showNotification(msg) { this.notifications.push(msg); },
         _addEntry(entry, selected) {
             const section = entry.isFavorite() ? this.favoritesSection : this.historySection;
-            const item = { entry, currentlySelected: selected, destroyed: 0, destroy() { this.destroyed++; section.items.splice(section.items.indexOf(this), 1); } };
+            const item = { entry, radioGroup: this.clipItemsRadioGroup, clipContents: 'text', menu: this.menu, setOrnament() {}, currentlySelected: selected, destroyed: 0, destroy() { this.destroyed++; section.items.splice(section.items.indexOf(this), 1); } };
             section.items.unshift(item);
             this.clipItemsRadioGroup.push(item);
             this._showElements();
@@ -94,4 +96,25 @@ for (const destroyed of ['item', 'extension']) {
     await Promise.resolve();
     assert.equal(imageDestroyed, 1, 'late callback must dispose image without accessing dead actors');
 }
-console.log('History: 9 scenarios passed (actual extension methods, mocked Shell actors).');
+for (const paste of [false, true]) {
+    for (const move of [false, true]) {
+        const h = setup({ paste, move }); const old = h.add(); const newest = h.add();
+        h.reset(); h._onMenuItemSelectedAndMenuClose(old, !paste);
+        assert.equal(old.currentlySelected, true);
+        assert.strictEqual(h.historySection.items[0], move ? old : newest,
+            `selection must respect move setting (paste=${paste}, move=${move})`);
+        assert.equal(h.writes, move ? 1 : 0);
+    }
+}
+for (const selectAfterPaste of [false, true]) {
+    const timers = [];
+    const h = setup({ paste: true, timers }); const old = h.add(); const newest = h.add(false, true);
+    h.reset(); h._pasteItem(old, selectAfterPaste);
+    if (selectAfterPaste) h._onMenuItemSelectedAndMenuClose(old, false);
+    timers.shift()(); timers.shift()();
+    assert.strictEqual(h.clipboardEntry, selectAfterPaste ? old.entry : newest.entry,
+        'row activation must retain new selection; paste-only must restore previous clipboard');
+    assert.strictEqual(h.historySection.items[0], selectAfterPaste ? old : newest);
+    assert.equal(h.writes, selectAfterPaste ? 1 : 0);
+}
+console.log('History: 15 scenarios passed (actual extension methods, mocked Shell actors).');

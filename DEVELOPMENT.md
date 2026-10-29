@@ -208,3 +208,23 @@ Test, JavaScript-Syntaxprüfung und History-Regressionstests bestanden. Die
 Korrektur liegt zunächst ausschließlich im Klon/Fork. Nach Übernahme der neuen
 `extension.js` und Neuanmeldung ist das Öffnen, Ändern, Speichern und Verwerfen
 im echten Editor noch zu prüfen.
+
+## Auswahl beim automatischen Einfügen (29. Oktober 2026)
+
+Zeilenklick/Enter mit aktivem „Paste on Select“ stellte nach dem simulierten
+Tastendruck die vorherige Auswahl wieder ins Clipboard. Das konnte diese Auswahl
+über Clipboard-Events erneut nach oben verschieben. Zeilenklick und Enter geben
+nun ausdrücklich an, dass die neue Auswahl nach dem Einfügen beibehalten wird.
+Die Verschiebung erfolgt bei Zeilenauswahl unmittelbar für beide Zustände von
+„Paste on Select“, unabhängig von nachfolgenden Clipboard-Events.
+
+Das separate Einfügen-Symbol bzw. `v` bleibt eine temporäre Einfügeaktion mit
+Wiederherstellung des vorherigen Clipboards. Zum Auswählen/Verschieben den
+Zeilentext anklicken. Anheften erfolgt über die Stecknadel rechts neben dem
+Editor oder per `p` auf dem fokussierten Menüeintrag.
+
+Die History-Suite umfasst nun 15 Szenarien einschließlich beider Auswahlmodi,
+aktivierter/deaktivierter Verschiebung sowie beider Paste-Timer bis zur
+Wiederherstellung. Alle fünf Testsuiten bestanden vor dieser Änderung; die
+angepasste History-Suite und Syntaxprüfung bestanden mit der Auswahlkorrektur.
+Interaktive Bestätigung der Korrektur steht aus.
