@@ -233,3 +233,18 @@ Die interaktiven Tests der korrigierten Version hat der Benutzer am
 29. Oktober 2026 als bestanden bestätigt. Unter X11 lässt sich die Shell nach
 dem Kopieren geänderter Dateien auch über `Alt+F2`, `r`, Enter neu laden; dafür
 ist keine Ab-/Anmeldung nötig. Unter Wayland ist dieser Weg nicht verfügbar.
+
+## Theme-Farben im Editor (29. Oktober 2026)
+
+Nach dem lokalen Test meldete der Benutzer schlecht lesbare Editorfarben. Der
+Editor verwendet jetzt `St.Entry` mit mehrzeiligem ClutterText statt eines nackten
+Clutter.Text mit fest gesetzten Farben. GNOME übernimmt Text-, Cursor-, Auswahl-
+und Hintergrundfarben aus dem Theme; die eigenen Editor-Hintergrundregeln und der
+Cogl-Import entfallen. Die frühere Farbtyp-Korrektur ist damit ersetzt.
+
+`gjs -m tests/editor-colors.js` prüft nun die tatsächlichen Dialog-Callbacks mit
+simulierten Shell-Widgets: mehrzeiliger Text, Speichern/Verwerfen, einmalige
+Cache-Aktualisierung und Clipboard-Update nur für ausgewählte Einträge. Explizite
+Textfarbzuweisungen führen im Test zu einem Fehler. Test, History-Suite und
+Syntaxprüfung bestanden. Die Darstellung im aktiven Theme ist noch interaktiv
+zu bestätigen; die installierte Extension wurde nicht automatisch geändert.

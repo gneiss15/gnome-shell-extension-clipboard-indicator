@@ -24,8 +24,9 @@ This fork builds on that fix while keeping the existing JSON format and settings
 - **Replace files atomically:** use Gio's complete file-replacement operation for
   local JSON storage. Save images before committing their registry references and
   remove unused images after the updated registry has committed.
-- **Fix the text editor on GNOME 46:** use the color type expected by that Shell
-  version, retaining the newer color API for other versions.
+- **Use a themed text editor:** use GNOME's standard text-entry widget for text,
+  cursor and selection colors instead of hardcoded colors or version-specific
+  color types.
 - **Make favorites clear:** use an outlined star for normal entries and a filled
   star for favorites, at normal menu contrast. Press **P** to toggle a favorite.
 
@@ -37,8 +38,9 @@ remain compatible. License and copyright notices are preserved.
 **Locally tested and working on Ubuntu 24.04 / GNOME Shell 46 / X11**
 — confirmed by the user on **29 October 2026**.
 
-The local interactive checks passed after the editor, selection and favorite-icon
-fixes. Automated tests also cover history operations, rapid save requests, write
+The local interactive checks passed after the initial editor, selection and
+favorite-icon fixes. A subsequent change to use themed editor colors is awaiting
+interactive confirmation. Automated tests also cover history operations, rapid save requests, write
 ordering, failure recovery, real Gio file operations and JSON roundtrips.
 
 Other GNOME versions have not been tested locally. The previously observed

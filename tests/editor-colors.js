@@ -1,28 +1,57 @@
-import Clutter from 'gi://Clutter';
-import Cogl from 'gi://Cogl';
-import GObject from 'gi://GObject';
 import Gio from 'gi://Gio';
 
+// Exercise the actual dialog callbacks without opening or modifying a Shell session.
 const file = Gio.File.new_for_uri(import.meta.url).get_parent().get_parent().get_child('extension.js');
 const [, bytes] = file.load_contents(null);
 const source = new TextDecoder().decode(bytes);
-const start = source.indexOf('        let white, selectionBlue;');
-const end = source.indexOf('        clutterText.color = white;', start);
-if (start < 0 || end < 0) throw new Error('Editor color construction not found');
-const construct = new Function('Clutter', 'Cogl', source.slice(start, end) + '\nreturn [white, selectionBlue];');
-const colors = construct(Clutter, Cogl);
-for (const property of ['color', 'selection-color', 'selected-text-color']) {
-    const expected = Clutter.Text.find_property(property).value_type;
-    for (const color of colors) {
-        if (!GObject.type_is_a(color.constructor.$gtype, expected))
-            throw new Error(`Wrong color type for ${property}`);
-    }
+const start = source.indexOf('    #showEditDialog (');
+const end = source.indexOf('    #closeImagePreview ()', start);
+if (start < 0 || end < 0) throw new Error('Editor dialog not found');
+const body = source.slice(start, end).trim().replaceAll('#', '_');
+function assert(ok, message) { if (!ok) throw new Error(message); }
+let editor, dialog;
+class Text {
+    constructor(text) { this.text = text; }
+    get_text() { return this.text; }
+    grab_key_focus() {}
+    set color(_) { throw new Error('Text color must come from the theme'); }
+    set selection_color(_) { throw new Error('Selection color must come from the theme'); }
+    set selected_text_color(_) { throw new Error('Selected text color must come from the theme'); }
 }
-if (colors[0].alpha !== 255 || colors[1].alpha !== 181)
-    throw new Error('Incorrect GNOME 46 color components');
-// Exercise the newer API branch without requiring a second Shell installation.
-class NewColor { init_from_4f(...rgba) { this.rgba = rgba; } }
-const newerColors = construct({}, { Color: NewColor });
-if (newerColors[0].rgba.join() !== '1,1,1,1' || newerColors[1].rgba.join() !== '0.39,0.59,1,0.71')
-    throw new Error('Newer color API fallback failed');
-print('Editor colors: real GNOME 46 property types and simulated newer API branch passed.');
+class Widget {
+    constructor(properties) { this.properties = properties; this.children = []; }
+    add_child(child) { this.children.push(child); }
+}
+class Entry extends Widget {
+    constructor(properties) { super(properties); this.clutter_text = new Text(properties.text); editor = this; }
+}
+class Dialog {
+    constructor() { this.contentLayout = new Widget(); this.buttons = []; dialog = this; }
+    addButton(button) { this.buttons.push(button); }
+    open() { this.opened = true; }
+    close() { this.closed = true; }
+}
+const show = new Function('St', 'ModalDialog', 'Clutter', '_', `return function ${body};`)(
+    { Entry, ScrollView: Widget, BoxLayout: Widget, PolicyType: { NEVER: 0, AUTOMATIC: 1 } },
+    { ModalDialog: Dialog }, { KEY_Escape: 27 }, text => text);
+for (const selected of [false, true]) {
+    let value = 'original\nsecond line';
+    const item = { entry: { getStringValue: () => value, setText: text => { value = text; } }, currentlySelected: selected };
+    const owner = { writes: 0, clipboardUpdates: 0, labels: 0, menu: { close() {}, open() {} },
+        _updateCache() { this.writes++; }, _setEntryLabel() { this.labels++; },
+        _updateClipboard() { this.clipboardUpdates++; } };
+    show.call(owner, item);
+    assert(dialog.opened, 'dialog did not open');
+    assert(editor.clutter_text.get_text() === value, 'initial multiline text lost');
+    assert(editor.clutter_text.single_line_mode === false && editor.clutter_text.line_wrap, 'multiline editing disabled');
+    editor.clutter_text.text = 'changed\ntext';
+    dialog.buttons.find(button => button.label === 'Discard').action();
+    assert(value === 'original\nsecond line' && owner.writes === 0, 'discard changed data');
+    show.call(owner, item);
+    editor.clutter_text.text = 'saved\ntext';
+    dialog.buttons.find(button => button.label === 'Save').action();
+    assert(value === 'saved\ntext' && item.clipContents === value, 'save lost edited text');
+    assert(owner.writes === 1 && owner.labels === 1, 'save must update label and registry once');
+    assert(owner.clipboardUpdates === Number(selected), 'only selected entry should update clipboard');
+}
+print('Editor: theme colors, multiline text, save/discard and selected clipboard updates passed (mocked Shell widgets).');

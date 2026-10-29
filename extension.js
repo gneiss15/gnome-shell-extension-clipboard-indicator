@@ -1,5 +1,4 @@
 import Clutter from 'gi://Clutter';
-import Cogl from 'gi://Cogl';
 import GObject from 'gi://GObject';
 import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
@@ -1839,39 +1838,23 @@ const ClipboardIndicator = GObject.registerClass({
             style: 'min-width: 400px; min-height: 100px; max-height: 400px;',
         });
 
-        const clutterText = new Clutter.Text({
+        // St.Entry applies the theme's text, cursor and selection colors.
+        const editor = new St.Entry({
             text: menuItem.entry.getStringValue(),
-            editable: true,
-            reactive: true,
-            single_line_mode: false,
-            activatable: false,
-            line_wrap: true,
-
+            can_focus: true,
+            x_expand: true,
         });
-
-        // GNOME 46 uses ClutterColor; newer Shell versions use CoglColor.
-        let white, selectionBlue;
-        if (Clutter.Color) {
-            white = new Clutter.Color({ red: 255, green: 255, blue: 255, alpha: 255 });
-            selectionBlue = new Clutter.Color({ red: 99, green: 150, blue: 255, alpha: 181 });
-        } else {
-            white = new Cogl.Color();
-            white.init_from_4f(1.0, 1.0, 1.0, 1.0);
-            selectionBlue = new Cogl.Color();
-            selectionBlue.init_from_4f(0.39, 0.59, 1.0, 0.71);
-        }
-        clutterText.color = white;
-        clutterText.selection_color = selectionBlue;
-        clutterText.selected_text_color = white;
+        const clutterText = editor.clutter_text;
+        clutterText.single_line_mode = false;
+        clutterText.activatable = false;
+        clutterText.line_wrap = true;
 
         const textBox = new St.BoxLayout({
-            style_class: 'ci-edit-textbox',
             x_expand: true,
             y_expand: true,
             vertical: true,
         });
-
-        textBox.add_child(clutterText);
+        textBox.add_child(editor);
 
         scrollView.add_child(textBox);
         dialog.contentLayout.add_child(scrollView);
